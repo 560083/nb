@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notice Board</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <!-- Import Google Fonts for beautiful handwritten styles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Caveat:wght@700&family=Patrick+Hand&display=swap" rel="stylesheet">
+    
+    <style>
+        /* High-contrast, clean global styling */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        /* Top Action Bar */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #2e2e4f;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #00f2fe;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Base Button Styles */
+        button {
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            transition: transform 0.1s ease, opacity 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-main {
+            padding: 10px 16px;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .btn-add { background-color: #28a745; }
+        .btn-archive-toggle { background-color: #6c757d; }
+        .btn-archive-toggle.active { background-color: #fd7e14; }
+        .btn-export { background-color: #17a2b8; }
+        .btn-import { background-color: #ffc107; color: #000; }
+
+        #fileInput { display: none; }
+
+        /* Notice Board Grid Layer */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            flex-grow: 1;
+            align-content: start;
+        }
+
+        /* Notice Card Styles */
+        .notice-card {
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            border: 3px solid #000000;
+            position: relative;
+        }
+
+        .notice-text {
+            font-size: 1.4rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .notice-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.15);
+        }
+
+        .card-actions button {
+            width: 32px;
+            height: 32px;
+            font-size: 0.9rem;
+            margin-left: 6px;
+            color: #ffffff;
+            border: 1px solid rgba(0,0,0,0.3);
+        }
+
+        .btn-edit { background-color: #4b6584; }
+        .btn-archive-btn { background-color: #fd7e14; }
+        .btn-delete { background-color: #eb3b5a; }
+
+        .notice-date {
+            font-size: 0.85rem;
+            font-weight: bold;
+            opacity: 0.8;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* Font Styles Mapping */
+        .font-sans { font-family: 'Segoe UI', sans-serif; }
+        .font-serif { font-family: 'Georgia', serif; }
+        .font-caveat { font-family: 'Caveat', cursive; font-size: 1.7rem; }
+        .font-architect { font-family: 'Architects Daughter', cursive; font-size: 1.3rem; }
+        .font-patrick { font-family: 'Patrick Hand', cursive; font-size: 1.5rem; }
+
+        /* Highly-readable Note Themes */
+        .theme-yellow { background-color: #ffeaa7; color: #2d3436; }
+        .theme-blue { background-color: #74b9ff; color: #000000; }
+        .theme-green { background-color: #55efc4; color: #000000; }
+        .theme-pink { background-color: #ff7675; color: #ffffff; }
+        .theme-purple { background-color: #a29bfe; color: #000000; }
+
+        /* Modal Overlay Configuration */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.75);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #1e1e38;
+            border: 2px solid #00f2fe;
+            border-radius: 12px;
+            padding: 25px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+            color: #00f2fe;
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #4b6584;
+            background-color: #2e2e4f;
+            color: white;
+            font-size: 1.1rem;
+            resize: none;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #a29bfe;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            background-color: #2e2e4f;
+            color: white;
+            border: 1px solid #4b6584;
+            font-size: 1rem;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            padding: 10px 20px;
+        }
+
+        .btn-cancel {
+            background-color: #636e72;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="boardTitle">Notice Board</h1>
+        <div class="controls">
+            <button class="btn-main btn-add" id="topAddBtn" onclick="openModal()">+ Add Notice</button>
+            <button class="btn-main btn-archive-toggle" id="toggleArchiveBtn" onclick="toggleView()">View Archive</button>
+            <button class="btn-main btn-export" onclick="exportJSON()">Export JSON</button>
+            <button class="btn-main btn-import" onclick="triggerImport()">Import JSON</button>
+            <input type="file" id="fileInput" accept=".json" onchange="importJSON(event)">
+        </div>
+    </header>
+
+    <main class="board" id="noticeBoard"></main>
+
+    <!-- Add / Edit Modal Editor -->
+    <div class="modal" id="noticeModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">New Notice</h3>
+            <textarea id="noticeText" placeholder="Type your notice here... (e.g., Pay water bill by 15 July)"></textarea>
+            
+            <div class="form-group">
+                <label for="noticeFont">Font Style</label>
+                <select id="noticeFont">
+                    <option value="font-caveat">Handwritten: Bold & Round</option>
+                    <option value="font-architect">Handwritten: Clean Print</option>
+                    <option value="font-patrick">Handwritten: Neat Marker</option>
+                    <option value="font-sans">Standard Clean Sans</option>
+                    <option value="font-serif">Standard Classic Serif</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="noticeTheme">Color Theme</label>
+                <select id="noticeTheme">
+                    <option value="theme-yellow">Sticky Yellow</option>
+                    <option value="theme-blue">Cool Blue</option>
+                    <option value="theme-green">Fresh Green</option>
+                    <option value="theme-pink">Alert Pink</option>
+                    <option value="theme-purple">Soft Purple</option>
+                </select>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-add" id="saveButton" onclick="saveNotice()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data structure includes an 'archived' boolean flag
+        let notices = [];
+        let editIdx = null;
+        let viewArchivedMode = false; // Tracks whether user is viewing current or archived board
+
+        window.onload = function() {
+            const savedData = localStorage.getItem('family_notices');
+            if (savedData) {
+                try {
+                    notices = JSON.parse(savedData);
+                } catch(e) {
+                    notices = [];
+                }
+            } else {
+                // Pre-populate with defaults if database is empty
+                notices = [
+                    { text: "Pay water bill by 15 July.", font: "font-architect", theme: "theme-yellow", date: "13/07/2026", archived: false },
+                    { text: "Buy Battery water.", font: "font-caveat", theme: "theme-blue", date: "13/07/2026", archived: false }
+                ];
+                saveToLocalStorage();
+            }
+            renderBoard();
+        };
+
+        function renderBoard() {
+            const board = document.getElementById('noticeBoard');
+            board.innerHTML = '';
+
+            // Set Header context titles dynamically
+            const titleEl = document.getElementById('boardTitle');
+            const toggleBtn = document.getElementById('toggleArchiveBtn');
+            const addBtn = document.getElementById('topAddBtn');
+
+            if (viewArchivedMode) {
+                titleEl.textContent = "Archived Notices";
+                toggleBtn.textContent = "View Active Board";
+                toggleBtn.classList.add('active');
+                addBtn.style.display = 'none'; // Don't allow new items straight into archive
+            } else {
+                titleEl.textContent = "Family Notice Board";
+                toggleBtn.textContent = "View Archive";
+                toggleBtn.classList.remove('active');
+                addBtn.style.display = 'inline-flex';
+            }
+
+            notices.forEach((notice, idx) => {
+                // Establish visibility state layer filter
+                const isArchived = notice.archived || false;
+                if (isArchived !== viewArchivedMode) return;
+
+                const card = document.createElement('div');
+                card.className = `notice-card ${notice.theme}`;
+                
+                const textDiv = document.createElement('div');
+                textDiv.className = `notice-text ${notice.font}`;
+                textDiv.textContent = notice.text;
+
+                const footer = document.createElement('div');
+                footer.className = 'notice-footer';
+
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'notice-date';
+                dateSpan.textContent = notice.date ? `Added: ${notice.date}` : '';
+
+                const actionDiv = document.createElement('div');
+                actionDiv.className = 'card-actions';
+
+                // Only allow edits on unarchived cards
+                if (!viewArchivedMode) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn-edit';
+                    editBtn.textContent = 'E';
+                    editBtn.title = 'Edit Notice';
+                    editBtn.onclick = () => editNotice(idx);
+                    actionDiv.appendChild(editBtn);
+                }
+
+                // Archive / Restore Toggle button
+                const archiveBtn = document.createElement('button');
+                archiveBtn.className = 'btn-archive-btn';
+                archiveBtn.textContent = viewArchivedMode ? 'R' : 'A';
+                archiveBtn.title = viewArchivedMode ? 'Restore to Active Board' : 'Archive Notice';
+                archiveBtn.onclick = () => toggleArchiveStatus(idx);
+                actionDiv.appendChild(archiveBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete';
+                delBtn.textContent = '-';
+                delBtn.title = 'Delete Permanently';
+                delBtn.onclick = () => deleteNotice(idx);
+                actionDiv.appendChild(delBtn);
+                
+                footer.appendChild(dateSpan);
+                footer.appendChild(actionDiv);
+                
+                card.appendChild(textDiv);
+                card.appendChild(footer);
+                
+                board.appendChild(card);
+            });
+        }
+
+        function toggleView() {
+            viewArchivedMode = !viewArchivedMode;
+            renderBoard();
+        }
+
+        function toggleArchiveStatus(idx) {
+            notices[idx].archived = !notices[idx].archived;
+            saveToLocalStorage();
+            renderBoard();
+        }
+
+        function openModal() {
+            editIdx = null;
+            document.getElementById('modalTitle').textContent = 'New Notice';
+            document.getElementById('noticeText').value = '';
+            document.getElementById('noticeFont').selectedIndex = 0;
+            document.getElementById('noticeTheme').selectedIndex = 0;
+            document.getElementById('noticeModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('noticeModal').style.display = 'none';
+        }
+
+        function saveNotice() {
+            const text = document.getElementById('noticeText').value.trim();
+            if (!text) return;
+
+            const font = document.getElementById('noticeFont').value;
+            const theme = document.getElementById('noticeTheme').value;
+            
+            if (editIdx !== null) {
+                const originalDate = notices[editIdx].date || new Date().toLocaleDateString('en-GB');
+                const originalArchiveState = notices[editIdx].archived || false;
+                notices[editIdx] = { text, font, theme, date: originalDate, archived: originalArchiveState };
+            } else {
+                const dateStr = new Date().toLocaleDateString('en-GB');
+                notices.unshift({ text, font, theme, date: dateStr, archived: false });
+            }
+
+            saveToLocalStorage();
+            renderBoard();
+            closeModal();
+        }
+
+        function editNotice(idx) {
+            editIdx = idx;
+            const target = notices[idx];
+            document.getElementById('modalTitle').textContent = 'Edit Notice';
+            document.getElementById('noticeText').value = target.text;
+            document.getElementById('noticeFont').value = target.font || 'font-caveat';
+            document.getElementById('noticeTheme').value = target.theme || 'theme-yellow';
+            document.getElementById('noticeModal').style.display = 'flex';
+        }
+
+        function deleteNotice(idx) {
+            const msg = viewArchivedMode ? "Permanently delete this notice?" : "Remove this notice?";
+            if(confirm(msg)) {
+                notices.splice(idx, 1);
+                saveToLocalStorage();
+                renderBoard();
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('family_notices', JSON.stringify(notices));
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notices, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `family_notices_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function triggerImport() {
+            document.getElementById('fileInput').click();
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    if (Array.isArray(parsedData)) {
+                        notices = parsedData;
+                        saveToLocalStorage();
+                        renderBoard();
+                        alert("Notices loaded successfully!");
+                    } else {
+                        alert("Invalid format: JSON content must be an array.");
+                    }
+                } catch(err) {
+                    alert("Error processing file: Ensure it is valid JSON.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+    </script>
+</body>
+</html>
